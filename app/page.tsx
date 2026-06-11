@@ -1,36 +1,85 @@
+import StelisCard from "./components/StelisCard";
+import StelisKPI from "./components/StelisKPI";
+
+const salesYesterday = 30347.25;
+const salesLastYear = 26880.0;
+const difference = salesYesterday - salesLastYear;
+const percentChange = (difference / salesLastYear) * 100;
+
 export default function Home() {
   return (
-    <main className="min-h-screen bg-[#050505] text-white">
-      <section className="mx-auto flex min-h-screen max-w-6xl flex-col justify-center px-6">
-        <p className="mb-4 text-sm uppercase tracking-[0.4em] text-zinc-500">
-          STELIS
-        </p>
+    <main className="min-h-screen bg-[#F5F7FA] text-[#07111F]">
+      <section className="mx-auto max-w-[1320px] px-[34px] py-[34px]">
+        <header className="flex items-center justify-between">
+          <p className="text-[13px] font-bold uppercase tracking-[0.45em] text-[#07111F]">
+            STELIS
+          </p>
 
-        <h1 className="max-w-4xl text-5xl font-semibold tracking-tight md:text-7xl">
-          The Apple of restaurant operating systems.
-        </h1>
-
-        <p className="mt-8 max-w-2xl text-lg leading-8 text-zinc-400">
-          A premium AI command center built to help restaurant owners understand
-          what happened, what needs attention, and what to do next.
-        </p>
-
-        <div className="mt-10 rounded-3xl border border-white/10 bg-white/5 p-6 shadow-2xl">
-          <p className="text-sm text-zinc-400">Today&apos;s priorities</p>
-
-          <div className="mt-5 space-y-4">
-            <div className="rounded-2xl bg-white/10 p-4">
-              Produce 4 recipes of beans before 10:00 AM
-            </div>
-
-            <div className="rounded-2xl bg-white/10 p-4">
-              Review supplier payments due this week
-            </div>
-
-            <div className="rounded-2xl bg-white/10 p-4">
-              Check cash flow before approving new purchases
-            </div>
+          <div className="rounded-full bg-[#07111F] px-[21px] py-[8px] text-[13px] text-white">
+            Owner Command Center
           </div>
+        </header>
+
+        <div className="mt-[34px] rounded-[34px] bg-[#07111F] px-[34px] py-[55px] text-white shadow-2xl md:px-[55px] md:py-[89px]">
+          <div className="mb-[34px] h-[8px] w-[89px] rounded-full bg-[#D62828]" />
+
+          <p className="text-[21px] text-slate-300">Good morning, Marvin.</p>
+
+          <h1 className="mt-[21px] max-w-[816px] text-[55px] font-semibold leading-[0.95] tracking-tight md:text-[89px]">
+            Your restaurant, understood.
+          </h1>
+
+          <p className="mt-[34px] max-w-[610px] text-[21px] leading-[34px] text-slate-300">
+            Sales, inventory, cash, payments, and the next best action — clear
+            in one executive view.
+          </p>
+        </div>
+
+        <div className="mt-[34px] grid gap-[34px] lg:grid-cols-[1.618fr_1fr]">
+          <StelisCard>
+            <StelisKPI
+              label="Sales Yesterday"
+              helper="Compared with same day last year"
+              value={`L ${salesYesterday.toLocaleString("en-US")}`}
+              trend={`+${percentChange.toFixed(1)}%`}
+              tone="neutral"
+            />
+
+            <div className="mt-[55px] grid gap-[21px] md:grid-cols-2">
+              <div className="rounded-[21px] bg-[#F5F7FA] p-[34px]">
+                <p className="text-[13px] text-slate-500">
+                  Last year same day
+                </p>
+                <p className="mt-[13px] text-[21px] font-semibold">
+                  L {salesLastYear.toLocaleString("en-US")}
+                </p>
+              </div>
+
+              <div className="rounded-[21px] bg-[#F5F7FA] p-[34px]">
+                <p className="text-[13px] text-slate-500">Difference</p>
+                <p className="mt-[13px] text-[21px] font-semibold text-[#D62828]">
+                  +L {difference.toLocaleString("en-US")}
+                </p>
+              </div>
+            </div>
+          </StelisCard>
+
+          <StelisCard variant="navy">
+            <div className="mb-[34px] h-[8px] w-[89px] rounded-full bg-[#D62828]" />
+
+            <p className="text-[13px] font-semibold uppercase tracking-wide text-slate-300">
+              AI Recommendation
+            </p>
+
+            <p className="mt-[34px] text-[34px] font-semibold leading-[1.05] tracking-tight">
+              Sales are ahead of last year.
+            </p>
+
+            <p className="mt-[21px] text-[21px] leading-[34px] text-slate-300">
+              Protect inventory today. Higher sales may increase pressure on
+              beans, cheese, tortillas, and cash purchases.
+            </p>
+          </StelisCard>
         </div>
       </section>
     </main>
