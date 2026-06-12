@@ -13,11 +13,22 @@ export default function StelisKPI({
   trend,
   tone = "neutral",
 }: StelisKPIProps) {
-  const toneStyles = {
+  const valueToneStyles = {
     neutral: "text-[#07111F]",
-    positive: "text-[#0B1F3A]",
+    positive: "text-[#07111F]",
     warning: "text-[#D62828]",
     danger: "text-[#D62828]",
+  };
+
+  const trendToneStyles = {
+    neutral:
+      "bg-[#07111F]/5 text-[#07111F] ring-1 ring-[#07111F]/10",
+    positive:
+      "bg-[#34C759]/10 text-[#34C759] ring-1 ring-[#34C759]/25",
+    warning:
+      "bg-[#D62828]/10 text-[#D62828] ring-1 ring-[#D62828]/20",
+    danger:
+      "bg-[#D62828] text-white ring-1 ring-[#D62828]",
   };
 
   return (
@@ -28,18 +39,22 @@ export default function StelisKPI({
             {label}
           </p>
 
-          {helper && <p className="mt-[8px] text-[13px] text-slate-500">{helper}</p>}
+          {helper && (
+            <p className="mt-[8px] text-[13px] text-slate-500">{helper}</p>
+          )}
         </div>
 
         {trend && (
-          <div className="rounded-full bg-[#D62828] px-[13px] py-[8px] text-[13px] font-semibold text-white">
+          <div
+            className={`rounded-full px-[13px] py-[8px] text-[13px] font-semibold ${trendToneStyles[tone]}`}
+          >
             {trend}
           </div>
         )}
       </div>
 
       <p
-        className={`mt-[34px] text-[55px] font-semibold leading-none tracking-tight md:text-[89px] ${toneStyles[tone]}`}
+        className={`mt-[34px] text-[55px] font-semibold leading-none tracking-tight md:text-[89px] ${valueToneStyles[tone]}`}
       >
         {value}
       </p>
