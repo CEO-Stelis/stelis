@@ -10,12 +10,12 @@ export default function StelisCard({
   className = "",
 }: StelisCardProps) {
   const baseStyles =
-    "rounded-[34px] p-[34px] shadow-xl transition-all duration-300";
+    "rounded-[21px] p-[34px] shadow-[0_21px_55px_rgba(7,17,31,0.07)] transition-all duration-300";
 
   const variantStyles =
     variant === "navy"
-      ? "bg-[#0B1F3A] text-white"
-      : "border border-slate-200 bg-white text-[#07111F]";
+      ? "border border-white/10 bg-[#07111F] text-white"
+      : "border border-[#07111F]/10 bg-white text-[#07111F]";
 
   return <div className={`${baseStyles} ${variantStyles} ${className}`}>{children}</div>;
 }

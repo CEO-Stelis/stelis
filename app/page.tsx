@@ -2,6 +2,8 @@ import StelisCard from "./components/StelisCard";
 import StelisCashPosition from "./components/StelisCashPosition";
 import StelisKPI from "./components/StelisKPI";
 import StelisAttentionRequired from "./components/StelisAttentionRequired";
+import StelisHealthIndex from "./components/StelisHealthIndex";
+import StelisSidebar from "./components/StelisSidebar";
 
 const availableCash = 180000;
 const committedCash = 164171;
@@ -12,6 +14,14 @@ const salesYesterday = 30347.25;
 const salesLastYear = 26880.0;
 const difference = salesYesterday - salesLastYear;
 const percentChange = (difference / salesLastYear) * 100;
+
+function formatMoney(amount: number) {
+  return `L\u00A0${amount.toLocaleString("en-US")}`;
+}
+
+const smallMetricNumberClass =
+  "mt-[13px] whitespace-nowrap font-sans text-[22px] font-semibold leading-none tracking-[-0.035em] text-[#07111F] [font-variant-numeric:tabular-nums]";
+
 const attentionItems = [
   {
     title: "BELCA payment due Thursday",
@@ -30,29 +40,53 @@ const attentionItems = [
   },
 ];
 
+const healthIndex = {
+  score: 91,
+  trendLabel: "+2.4% versus previous period",
+  trendDirection: "up" as const,
+  biggestPositiveFactor: {
+    title: "Cash obligations covered",
+    detail:
+      "Payroll and supplier payments remain protected after committed cash is removed.",
+    impact: "+8 points from Cash Health",
+  },
+  biggestNegativeFactor: {
+    title: "Cheese inventory pressure",
+    detail:
+      "Projected to fall below target within 2 days, increasing production risk.",
+    impact: "-3 points from Inventory Health",
+  },
+  fastestPathToImprovement: {
+    title: "Approve cheese purchase today",
+    detail:
+      "Protects high-demand items before the next service window and reduces stockout risk.",
+    expectedImpact: "Expected to recover 3 Inventory Health points.",
+  },
+};
+
 export default function Home() {
   return (
-    <main className="min-h-screen bg-[#F5F7FA] text-[#07111F]">
-      <section className="mx-auto max-w-[1320px] px-[34px] py-[34px]">
-        <header className="flex items-center justify-between">
-          <p className="text-[13px] font-bold uppercase tracking-[0.45em] text-[#07111F]">
-            STELIS
-          </p>
+    <main className="min-h-screen bg-[#F6F8FB] text-[#07111F] lg:flex">
+      <StelisSidebar />
 
-          <div className="rounded-full bg-[#07111F] px-[21px] py-[8px] text-[13px] text-white">
-            Owner Morning Brief
+      <section className="min-h-screen w-full flex-1 px-[21px] py-[34px] md:px-[34px]">
+        <header className="flex items-start justify-between gap-[21px]">
+          <div>
+            <p className="font-serif text-[34px] font-medium leading-none tracking-tight text-[#07111F]">
+              Good morning, Marvin.
+            </p>
+
+            <p className="mt-[8px] text-[13px] font-semibold uppercase tracking-[0.34em] text-[#07111F]/70">
+              Friday, June 12, 2026
+            </p>
+          </div>
+
+          <div className="rounded-full bg-[#07111F] px-[21px] py-[8px] text-[13px] font-medium text-white shadow-[0_13px_34px_rgba(7,17,31,0.16)]">
+            Last update: 7:15 AM
           </div>
         </header>
 
         <div className="mt-[34px]">
-          <p className="text-[21px] text-slate-500">Good morning, Marvin.</p>
-
-          <h1 className="mt-[13px] max-w-[816px] text-[55px] font-semibold leading-[0.95] tracking-tight md:text-[89px]">
-            Cash is safe. Business is moving.
-          </h1>
-        </div>
-
-        <div className="mt-[55px]">
           <StelisCashPosition
             availableCash={availableCash}
             committedCash={committedCash}
@@ -60,50 +94,55 @@ export default function Home() {
             cashScore={cashScore}
           />
         </div>
-<div className="mt-[34px]">
-  <StelisAttentionRequired items={attentionItems} />
-</div>
+
+        <div className="mt-[34px] grid gap-[34px] xl:grid-cols-2">
+          <StelisHealthIndex {...healthIndex} />
+          <StelisAttentionRequired items={attentionItems} />
+        </div>
+
         <div className="mt-[34px] grid gap-[34px] lg:grid-cols-[1.618fr_1fr]">
           <StelisCard>
             <StelisKPI
               label="Sales Yesterday"
               helper="Compared with same day last year"
-              value={`L ${salesYesterday.toLocaleString("en-US")}`}
+              value={formatMoney(salesYesterday)}
               trend={`+${percentChange.toFixed(1)}%`}
               tone="positive"
             />
 
-            <div className="mt-[55px] grid gap-[21px] md:grid-cols-2">
-              <div className="rounded-[21px] bg-[#F5F7FA] p-[34px]">
-                <p className="text-[13px] text-slate-500">
-                  Last year same day
+            <div className="mt-[34px] grid gap-[21px] md:grid-cols-2">
+              <div className="rounded-[13px] border border-[#07111F]/10 bg-[#F6F8FB] p-[21px]">
+                <p className="text-[12px] font-bold uppercase tracking-[0.24em] text-[#07111F]/55">
+                  Last Year Same Day
                 </p>
-                <p className="mt-[13px] text-[21px] font-semibold">
-                  L {salesLastYear.toLocaleString("en-US")}
+
+                <p className={smallMetricNumberClass}>
+                  {formatMoney(salesLastYear)}
                 </p>
               </div>
 
-              <div className="rounded-[21px] bg-[#F5F7FA] p-[34px]">
-                <p className="text-[13px] text-slate-500">Difference</p>
-                <p className="mt-[13px] text-[21px] font-semibold text-[#34C759]">
-                  +L {difference.toLocaleString("en-US")}
+              <div className="rounded-[13px] border border-[#07111F]/10 bg-[#F6F8FB] p-[21px]">
+                <p className="text-[12px] font-bold uppercase tracking-[0.24em] text-[#07111F]/55">
+                  Difference
+                </p>
+
+                <p className={`${smallMetricNumberClass} text-[#1E9E45]`}>
+                  +{formatMoney(difference)}
                 </p>
               </div>
             </div>
           </StelisCard>
 
-          <StelisCard variant="navy">
-            <div className="mb-[34px] h-[8px] w-[89px] rounded-full bg-[#34C759]" />
-
-            <p className="text-[13px] font-semibold uppercase tracking-wide text-slate-300">
+          <StelisCard>
+            <p className="text-[13px] font-bold uppercase tracking-[0.34em] text-[#07111F]">
               STELIS Intelligence
             </p>
 
-            <p className="mt-[34px] text-[34px] font-semibold leading-[1.05] tracking-tight">
+            <p className="mt-[21px] max-w-[610px] text-[21px] leading-[34px] text-[#07111F]">
               Payroll remains covered.
             </p>
 
-            <p className="mt-[21px] text-[21px] leading-[34px] text-slate-300">
+            <p className="mt-[13px] text-[21px] leading-[34px] text-slate-500">
               Current free cash is positive after committed obligations.
               Continue protecting supplier payments and avoid non-essential
               purchases today.
