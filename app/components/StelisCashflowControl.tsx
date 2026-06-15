@@ -1,0 +1,445 @@
+"use client";
+
+import { useEffect, useMemo, useState } from "react";
+import { stelisText, type StelisLanguage } from "../lib/stelisText";
+import {
+  stelisCalculateCashTotals,
+  stelisFormatMoney,
+  stelisGetCashRisk,
+  stelisInitialAccounts,
+  stelisInitialMovements,
+  stelisInitialObligations,
+  stelisNormalizeAmount,
+  stelisTodayDate,
+  type StelisAccount,
+  type StelisCashMovement,
+  type StelisMovementType,
+  type StelisObligation,
+} from "../lib/stelisCashflowData";
+import {
+  stelisLoadAccounts,
+  stelisLoadMovements,
+  stelisSaveAccounts,
+  stelisSaveMovements,
+} from "../lib/stelisCashflowStorage";
+import StelisCard from "./StelisCard";
+
+export type StelisCashflowControlProps = {
+  language: StelisLanguage;
+};
+
+function getPriorityStyle(priority: StelisObligation["priority"]) {
+  if (priority === "critical") {
+    return "border-[#D62828]/20 bg-[#D62828]/[0.03] text-[#D62828]";
+  }
+
+  if (priority === "important") {
+    return "border-[#07111F]/10 bg-[#F6F8FB] text-[#07111F]";
+  }
+
+  return "border-[#07111F]/10 bg-white text-slate-500";
+}
+
+function getPriorityLabel(
+  priority: StelisObligation["priority"],
+  language: StelisLanguage,
+) {
+  if (language === "es") {
+    if (priority === "critical") return "crítico";
+    if (priority === "important") return "importante";
+    return "flexible";
+  }
+
+  return priority;
+}
+
+function getDueLabel(language: StelisLanguage) {
+  return language === "es" ? "Vence" : "Due";
+}
+
+function getMovementDescription(
+  movement: StelisCashMovement,
+  language: StelisLanguage,
+) {
+  return language === "es" ? movement.descriptionEs : movement.descriptionEn;
+}
+
+export function StelisCashflowControl({
+  language,
+}: StelisCashflowControlProps) {
+  const text = stelisText[language].cashflow;
+
+  const [storageReady, setStorageReady] = useState(false);
+  const [accounts, setAccounts] =
+    useState<StelisAccount[]>(stelisInitialAccounts);
+  const [movements, setMovements] = useState<StelisCashMovement[]>(
+    stelisInitialMovements,
+  );
+
+  const [movementType, setMovementType] =
+    useState<StelisMovementType>("cash_received");
+  const [accountId, setAccountId] = useState(stelisInitialAccounts[0].id);
+  const [amount, setAmount] = useState("");
+  const [description, setDescription] = useState("");
+  const [date, setDate] = useState(stelisTodayDate());
+
+  useEffect(() => {
+    setAccounts(stelisLoadAccounts());
+    setMovements(stelisLoadMovements());
+    setStorageReady(true);
+  }, []);
+
+  useEffect(() => {
+    if (!storageReady) return;
+
+    stelisSaveAccounts(accounts);
+  }, [accounts, storageReady]);
+
+  useEffect(() => {
+    if (!storageReady) return;
+
+    stelisSaveMovements(movements);
+  }, [movements, storageReady]);
+
+  const totals = useMemo(() => {
+    return stelisCalculateCashTotals(accounts, stelisInitialObligations);
+  }, [accounts]);
+
+  const cashRisk = stelisGetCashRisk(totals.trueFreeCash);
+
+  const cashRiskLabel =
+    cashRisk === "critical"
+      ? text.critical
+      : cashRisk === "tight"
+        ? text.tight
+        : text.healthy;
+
+  const cashRiskBadge =
+    cashRisk === "critical"
+      ? text.cashProtectionRequired
+      : cashRisk === "tight"
+        ? text.cashMustBeWatched
+        : text.cashPositionStable;
+
+  const recommendation =
+    cashRisk === "critical"
+      ? text.recommendations.critical
+      : cashRisk === "tight"
+        ? text.recommendations.tight
+        : text.recommendations.healthy;
+
+  function handleAddMovement() {
+    const parsedAmount = Number(amount);
+
+    if (!description.trim() || Number.isNaN(parsedAmount) || parsedAmount <= 0) {
+      return;
+    }
+
+    const normalizedAmount = stelisNormalizeAmount(movementType, parsedAmount);
+
+    const newMovement: StelisCashMovement = {
+      id: `m-${Date.now()}`,
+      type: movementType,
+      descriptionEn: description.trim(),
+      descriptionEs: description.trim(),
+      accountId,
+      amount: normalizedAmount,
+      date,
+    };
+
+    setMovements((current) => [newMovement, ...current]);
+
+    setAccounts((current) =>
+      current.map((account) =>
+        account.id === accountId
+          ? {
+              ...account,
+              balance: account.balance + normalizedAmount,
+            }
+          : account,
+      ),
+    );
+
+    setAmount("");
+    setDescription("");
+    setMovementType("cash_received");
+    setAccountId(stelisInitialAccounts[0].id);
+    setDate(stelisTodayDate());
+  }
+
+  return (
+    <StelisCard className="border-[#07111F]/10 shadow-[0_21px_55px_rgba(7,17,31,0.08)]">
+      <div className="flex flex-col gap-[34px]">
+        <div className="flex flex-wrap items-start justify-between gap-[21px]">
+          <div>
+            <p className="text-[12px] font-bold uppercase tracking-[0.28em] text-[#07111F]/65">
+              {text.title}
+            </p>
+
+            <h2 className="mt-[13px] font-serif text-[44px] font-medium leading-none tracking-[-0.035em] text-[#07111F]">
+              {cashRiskLabel}
+            </h2>
+
+            <p className="mt-[13px] max-w-[620px] text-[16px] leading-[25px] text-slate-500">
+              {text.description}
+            </p>
+          </div>
+
+          <div
+            className={`rounded-full px-[16px] py-[9px] text-[13px] font-semibold ring-1 ${
+              cashRisk === "critical"
+                ? "bg-[#D62828]/10 text-[#D62828] ring-[#D62828]/20"
+                : cashRisk === "tight"
+                  ? "bg-[#07111F]/5 text-[#07111F] ring-[#07111F]/10"
+                  : "bg-[#34C759]/10 text-[#1E9E45] ring-[#34C759]/25"
+            }`}
+          >
+            {cashRiskBadge}
+          </div>
+        </div>
+
+        <div className="grid gap-[21px] md:grid-cols-4">
+          <CashSummaryBox
+            label={text.availableCash}
+            value={stelisFormatMoney(totals.availableCash)}
+          />
+
+          <CashSummaryBox
+            label={text.pendingCards}
+            value={stelisFormatMoney(totals.pendingSettlements)}
+          />
+
+          <CashSummaryBox
+            label={text.criticalCommitments}
+            value={stelisFormatMoney(totals.criticalCommitments)}
+          />
+
+          <div
+            className={`rounded-[16px] border p-[18px] ${
+              totals.trueFreeCash < 0
+                ? "border-[#D62828]/20 bg-[#D62828]/[0.03]"
+                : "border-[#34C759]/20 bg-[#34C759]/[0.04]"
+            }`}
+          >
+            <p className="text-[11px] font-bold uppercase tracking-[0.2em] text-[#07111F]/55">
+              {text.trueFreeCash}
+            </p>
+
+            <p
+              className={`mt-[12px] whitespace-nowrap font-sans text-[24px] font-semibold leading-none tracking-[-0.04em] [font-variant-numeric:tabular-nums] ${
+                totals.trueFreeCash < 0 ? "text-[#D62828]" : "text-[#1E9E45]"
+              }`}
+            >
+              {stelisFormatMoney(totals.trueFreeCash)}
+            </p>
+          </div>
+        </div>
+
+        <div className="grid gap-[34px] xl:grid-cols-[1fr_1.1fr]">
+          <div className="rounded-[18px] border border-[#07111F]/10 bg-[#F6F8FB] p-[21px]">
+            <p className="text-[12px] font-bold uppercase tracking-[0.24em] text-[#07111F]/65">
+              {text.registerMovement}
+            </p>
+
+            <div className="mt-[21px] grid gap-[16px]">
+              <label className="grid gap-[8px]">
+                <span className="text-[13px] font-semibold text-[#07111F]">
+                  {text.movementType}
+                </span>
+
+                <select
+                  value={movementType}
+                  onChange={(event) =>
+                    setMovementType(event.target.value as StelisMovementType)
+                  }
+                  className="rounded-[13px] border border-[#07111F]/10 bg-white px-[14px] py-[12px] text-[14px] font-medium outline-none"
+                >
+                  {Object.entries(text.movementTypes).map(([value, label]) => (
+                    <option key={value} value={value}>
+                      {label}
+                    </option>
+                  ))}
+                </select>
+              </label>
+
+              <label className="grid gap-[8px]">
+                <span className="text-[13px] font-semibold text-[#07111F]">
+                  {text.account}
+                </span>
+
+                <select
+                  value={accountId}
+                  onChange={(event) => setAccountId(event.target.value)}
+                  className="rounded-[13px] border border-[#07111F]/10 bg-white px-[14px] py-[12px] text-[14px] font-medium outline-none"
+                >
+                  {accounts.map((account) => (
+                    <option key={account.id} value={account.id}>
+                      {account.name}
+                    </option>
+                  ))}
+                </select>
+              </label>
+
+              <label className="grid gap-[8px]">
+                <span className="text-[13px] font-semibold text-[#07111F]">
+                  {text.amount}
+                </span>
+
+                <input
+                  value={amount}
+                  onChange={(event) => setAmount(event.target.value)}
+                  type="number"
+                  min="0"
+                  step="0.01"
+                  placeholder={text.amountPlaceholder}
+                  className="rounded-[13px] border border-[#07111F]/10 bg-white px-[14px] py-[12px] text-[14px] font-medium outline-none"
+                />
+              </label>
+
+              <label className="grid gap-[8px]">
+                <span className="text-[13px] font-semibold text-[#07111F]">
+                  {text.descriptionLabel}
+                </span>
+
+                <input
+                  value={description}
+                  onChange={(event) => setDescription(event.target.value)}
+                  placeholder={text.descriptionPlaceholder}
+                  className="rounded-[13px] border border-[#07111F]/10 bg-white px-[14px] py-[12px] text-[14px] font-medium outline-none"
+                />
+              </label>
+
+              <label className="grid gap-[8px]">
+                <span className="text-[13px] font-semibold text-[#07111F]">
+                  {text.date}
+                </span>
+
+                <input
+                  value={date}
+                  onChange={(event) => setDate(event.target.value)}
+                  type="date"
+                  className="rounded-[13px] border border-[#07111F]/10 bg-white px-[14px] py-[12px] text-[14px] font-medium outline-none"
+                />
+              </label>
+
+              <button
+                type="button"
+                onClick={handleAddMovement}
+                className="mt-[5px] rounded-full bg-[#07111F] px-[21px] py-[13px] text-[14px] font-semibold text-white transition duration-150 hover:bg-[#0B1F3A]"
+              >
+                {text.registerMovement}
+              </button>
+            </div>
+          </div>
+
+          <div className="grid gap-[21px]">
+            <div className="rounded-[18px] border border-[#07111F]/10 bg-white p-[21px]">
+              <p className="text-[12px] font-bold uppercase tracking-[0.24em] text-[#07111F]/65">
+                {text.recommendation}
+              </p>
+
+              <p className="mt-[13px] text-[18px] font-semibold leading-[25px] tracking-[-0.02em] text-[#07111F]">
+                {recommendation}
+              </p>
+            </div>
+
+            <div className="rounded-[18px] border border-[#07111F]/10 bg-white p-[21px]">
+              <p className="text-[12px] font-bold uppercase tracking-[0.24em] text-[#07111F]/65">
+                {text.upcomingObligations}
+              </p>
+
+              <div className="mt-[16px] space-y-[10px]">
+                {stelisInitialObligations.map((obligation) => (
+                  <div
+                    key={obligation.id}
+                    className={`flex items-center justify-between gap-[16px] rounded-[14px] border px-[14px] py-[12px] ${getPriorityStyle(
+                      obligation.priority,
+                    )}`}
+                  >
+                    <div>
+                      <p className="text-[14px] font-semibold text-[#07111F]">
+                        {language === "es"
+                          ? obligation.nameEs
+                          : obligation.nameEn}
+                      </p>
+
+                      <p className="mt-[4px] text-[12px] text-slate-500">
+                        {getDueLabel(language)} {obligation.dueDate} ·{" "}
+                        {getPriorityLabel(obligation.priority, language)}
+                      </p>
+                    </div>
+
+                    <p className="whitespace-nowrap font-sans text-[15px] font-semibold tracking-[-0.03em] text-[#07111F] [font-variant-numeric:tabular-nums]">
+                      {stelisFormatMoney(obligation.amount)}
+                    </p>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            <div className="rounded-[18px] border border-[#07111F]/10 bg-white p-[21px]">
+              <p className="text-[12px] font-bold uppercase tracking-[0.24em] text-[#07111F]/65">
+                {text.recentMovements}
+              </p>
+
+              <div className="mt-[16px] space-y-[10px]">
+                {movements.slice(0, 5).map((movement) => (
+                  <div
+                    key={movement.id}
+                    className="flex items-center justify-between gap-[16px] rounded-[14px] border border-[#07111F]/10 bg-[#F6F8FB] px-[14px] py-[12px]"
+                  >
+                    <div>
+                      <p className="text-[14px] font-semibold text-[#07111F]">
+                        {getMovementDescription(movement, language)}
+                      </p>
+
+                      <p className="mt-[4px] text-[12px] text-slate-500">
+                        {text.movementTypes[movement.type]} · {movement.date}
+                      </p>
+                    </div>
+
+                    <p
+                      className={`whitespace-nowrap font-sans text-[15px] font-semibold tracking-[-0.03em] [font-variant-numeric:tabular-nums] ${
+                        movement.amount < 0
+                          ? "text-[#D62828]"
+                          : "text-[#1E9E45]"
+                      }`}
+                    >
+                      {stelisFormatMoney(movement.amount)}
+                    </p>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div className="rounded-[18px] border border-[#07111F]/10 bg-[#07111F] p-[21px] text-white">
+          <p className="text-[12px] font-bold uppercase tracking-[0.24em] text-white/55">
+            {text.securityRule}
+          </p>
+
+          <p className="mt-[10px] text-[15px] leading-[24px] text-white/80">
+            {text.securityMessage}
+          </p>
+        </div>
+      </div>
+    </StelisCard>
+  );
+}
+
+function CashSummaryBox({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="rounded-[16px] border border-[#07111F]/10 bg-[#F6F8FB] p-[18px]">
+      <p className="text-[11px] font-bold uppercase tracking-[0.2em] text-[#07111F]/55">
+        {label}
+      </p>
+
+      <p className="mt-[12px] whitespace-nowrap font-sans text-[24px] font-semibold leading-none tracking-[-0.04em] text-[#07111F] [font-variant-numeric:tabular-nums]">
+        {value}
+      </p>
+    </div>
+  );
+}
+
+export default StelisCashflowControl;
