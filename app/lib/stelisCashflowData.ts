@@ -5,6 +5,8 @@ export type StelisAccount = {
   name: string;
   type: StelisAccountType;
   balance: number;
+  bank?: string;
+  notes?: string;
 };
 
 export type StelisMovementType =
@@ -40,60 +42,34 @@ export type StelisObligation = {
   priority: StelisObligationPriority;
 };
 
+// List of banks available in Honduras for account creation.
+// "none" is used for cash registers that don't belong to a bank.
+export const stelisBankOptions = [
+  "none",
+  "BAC",
+  "Banco Occidente",
+  "Banco Atlántida",
+  "Banco Ficohsa",
+  "Banpaís",
+  "Banrural",
+  "Banco Cuscatlán",
+  "Banco de los Trabajadores",
+  "Banco Promerica",
+  "Banco Lafise",
+  "Banco Davivienda",
+] as const;
+
+export type StelisBankOption = (typeof stelisBankOptions)[number];
+
+// Only Caja Física remains as a base account.
+// The client creates all bank accounts on top of this.
 export const stelisInitialAccounts: StelisAccount[] = [
-  {
-    id: "bac",
-    name: "BAC",
-    type: "bank",
-    balance: 27816.08,
-  },
-  {
-    id: "occidente",
-    name: "Banco Occidente",
-    type: "bank",
-    balance: 40281.39,
-  },
-  {
-    id: "atlantida",
-    name: "Banco Atlántida",
-    type: "bank",
-    balance: 0,
-  },
-  {
-    id: "ficohsa",
-    name: "Banco Ficohsa",
-    type: "bank",
-    balance: 0,
-  },
-  {
-    id: "banpais",
-    name: "Banpaís",
-    type: "bank",
-    balance: 0,
-  },
-  {
-    id: "banrural",
-    name: "Banrural",
-    type: "bank",
-    balance: 0,
-  },
-  {
-    id: "cuscatlan",
-    name: "Banco Cuscatlán",
-    type: "bank",
-    balance: 0,
-  },
   {
     id: "cash-box",
     name: "Caja Física",
     type: "cash",
     balance: 15000,
-  },
-  {
-    id: "pending-cards",
-    name: "Tarjetas Pendientes",
-    type: "settlement",
-    balance: 14710,
+    bank: "none",
   },
 ];
 
@@ -106,24 +82,6 @@ export const stelisInitialMovements: StelisCashMovement[] = [
     accountId: "cash-box",
     amount: 15637,
     date: "2026-06-12",
-  },
-  {
-    id: "m-2",
-    type: "card_sales",
-    descriptionEn: "BAC and Occidente card sales pending settlement",
-    descriptionEs: "Ventas con tarjeta BAC y Occidente pendientes de liquidación",
-    accountId: "pending-cards",
-    amount: 14710,
-    date: "2026-06-12",
-  },
-  {
-    id: "m-3",
-    type: "supplier_payment",
-    descriptionEn: "BELCA planned payment",
-    descriptionEs: "Pago planificado a BELCA",
-    accountId: "bac",
-    amount: -11233.34,
-    date: "2026-06-13",
   },
 ];
 

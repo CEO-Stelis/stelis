@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { stelisText, type StelisLanguage } from "../lib/stelisText";
 import {
+  stelisBankOptions,
   stelisCalculateCashTotals,
   stelisFormatMoney,
   stelisGetCashRisk,
@@ -42,7 +43,7 @@ type StelisAccountErrors = {
   name?: string;
   type?: string;
   openingBalance?: string;
-  bankName?: string;
+  bank?: string;
 };
 
 function getPriorityStyle(priority: StelisObligation["priority"]) {
@@ -117,7 +118,7 @@ export function StelisCashflowControl({
   const [newAccountType, setNewAccountType] =
     useState<StelisAccountType>("bank");
   const [newOpeningBalance, setNewOpeningBalance] = useState("");
-  const [newBankName, setNewBankName] = useState("");
+  const [newBank, setNewBank] = useState<string>("BAC");
   const [newNotes, setNewNotes] = useState("");
   const [accountErrors, setAccountErrors] = useState<StelisAccountErrors>({});
 
@@ -218,7 +219,7 @@ export function StelisCashflowControl({
     setAmount("");
     setDescription("");
     setMovementType("cash_received");
-    setAccountId(stelisInitialAccounts[0].id);
+    setAccountId(accountId);
     setDate(stelisTodayDate());
   }
 
@@ -238,7 +239,20 @@ export function StelisCashflowControl({
     const newErrors: StelisAccountErrors = {};
     const required = getRequiredMessage(language);
 
-    if (!newAccountName.trim()) newErrors.name = required;
+    // Name required + duplicate check (case-insensitive)
+    const trimmedName = newAccountName.trim();
+    if (!trimmedName) {
+      newErrors.name = required;
+    } else {
+      const exists = accounts.some(
+        (account) =>
+          account.name.trim().toLowerCase() === trimmedName.toLowerCase(),
+      );
+      if (exists) {
+        newErrors.name = accountText.duplicateName;
+      }
+    }
+
     if (!newAccountType) newErrors.type = required;
 
     const parsedBalance = Number(newOpeningBalance);
@@ -250,9 +264,9 @@ export function StelisCashflowControl({
       newErrors.openingBalance = required;
     }
 
-    // Bank name only required when the account type is a bank account
-    if (newAccountType === "bank" && !newBankName.trim()) {
-      newErrors.bankName = required;
+    // Bank required only for bank accounts, and must not be "none"
+    if (newAccountType === "bank" && (!newBank || newBank === "none")) {
+      newErrors.bank = required;
     }
 
     return newErrors;
@@ -275,6 +289,8 @@ export function StelisCashflowControl({
       name: newAccountName.trim(),
       type: newAccountType,
       balance: parsedBalance,
+      bank: newAccountType === "cash" ? "none" : newBank,
+      notes: newNotes.trim() || undefined,
     };
 
     setAccounts((current) => [...current, newAccount]);
@@ -286,9 +302,14 @@ export function StelisCashflowControl({
     setNewAccountName("");
     setNewAccountType("bank");
     setNewOpeningBalance("");
-    setNewBankName("");
+    setNewBank("BAC");
     setNewNotes("");
     setShowAccountForm(false);
+  }
+
+  function getBankLabel(bank: string) {
+    if (bank === "none") return accountText.noBank;
+    return bank;
   }
 
   return (
@@ -593,7 +614,7 @@ export function StelisCashflowControl({
                           setAccountErrors((prev) => ({
                             ...prev,
                             type: undefined,
-                            bankName: undefined,
+                            bank: undefined,
                           }));
                         }}
                         className={`rounded-[13px] border bg-white px-[14px] py-[12px] text-[14px] font-medium outline-none ${
@@ -651,35 +672,42 @@ export function StelisCashflowControl({
                       )}
                     </label>
 
-                    {/* Bank Name */}
-                    <label className="grid gap-[8px]">
-                      <span className="text-[13px] font-semibold text-[#07111F]">
-                        {accountText.bankName}
-                      </span>
-
-                      <input
-                        value={newBankName}
-                        onChange={(event) => {
-                          setNewBankName(event.target.value);
-                          setAccountErrors((prev) => ({
-                            ...prev,
-                            bankName: undefined,
-                          }));
-                        }}
-                        placeholder={accountText.bankNamePlaceholder}
-                        className={`rounded-[13px] border bg-white px-[14px] py-[12px] text-[14px] font-medium outline-none ${
-                          accountErrors.bankName
-                            ? "border-[#D62828]"
-                            : "border-[#07111F]/10"
-                        }`}
-                      />
-
-                      {accountErrors.bankName && (
-                        <span className="text-[12px] font-semibold text-[#D62828]">
-                          {accountErrors.bankName}
+                    {/* Bank (dropdown) - hidden for cash registers */}
+                    {newAccountType !== "cash" && (
+                      <label className="grid gap-[8px]">
+                        <span className="text-[13px] font-semibold text-[#07111F]">
+                          {accountText.bankName}
                         </span>
-                      )}
-                    </label>
+
+                        <select
+                          value={newBank}
+                          onChange={(event) => {
+                            setNewBank(event.target.value);
+                            setAccountErrors((prev) => ({
+                              ...prev,
+                              bank: undefined,
+                            }));
+                          }}
+                          className={`rounded-[13px] border bg-white px-[14px] py-[12px] text-[14px] font-medium outline-none ${
+                            accountErrors.bank
+                              ? "border-[#D62828]"
+                              : "border-[#07111F]/10"
+                          }`}
+                        >
+                          {stelisBankOptions.map((bank) => (
+                            <option key={bank} value={bank}>
+                              {getBankLabel(bank)}
+                            </option>
+                          ))}
+                        </select>
+
+                        {accountErrors.bank && (
+                          <span className="text-[12px] font-semibold text-[#D62828]">
+                            {accountErrors.bank}
+                          </span>
+                        )}
+                      </label>
+                    )}
 
                     {/* Notes (optional) */}
                     <label className="grid gap-[8px]">
@@ -712,7 +740,7 @@ export function StelisCashflowControl({
                           setNewAccountName("");
                           setNewAccountType("bank");
                           setNewOpeningBalance("");
-                          setNewBankName("");
+                          setNewBank("BAC");
                           setNewNotes("");
                         }}
                         className="rounded-full border border-[#07111F]/15 px-[18px] py-[13px] text-[14px] font-semibold text-[#07111F]/55 transition duration-150 hover:text-[#07111F]"
