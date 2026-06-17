@@ -25,6 +25,12 @@ function formatMoney(amount: number) {
 const smallMetricNumberClass =
   "mt-[13px] whitespace-nowrap font-sans text-[22px] font-semibold leading-none tracking-[-0.035em] text-[#07111F] [font-variant-numeric:tabular-nums]";
 
+type SidebarItem = {
+  label: string;
+  active?: boolean;
+  badge?: string;
+};
+
 const copy = {
   en: {
     greeting: "Good morning, Marvin.",
@@ -42,7 +48,7 @@ const copy = {
         { label: "Suppliers" },
         { label: "Reports" },
         { label: "Settings" },
-      ],
+      ] as SidebarItem[],
     },
 
     cashPosition: {
@@ -133,7 +139,7 @@ const copy = {
         { label: "Proveedores" },
         { label: "Reportes" },
         { label: "Ajustes" },
-      ],
+      ] as SidebarItem[],
     },
 
     cashPosition: {
@@ -209,7 +215,7 @@ const copy = {
         "después de separar las obligaciones comprometidas. Continúa protegiendo pagos a proveedores y evita compras no esenciales hoy.",
     },
   },
-} as const;
+};
 
 export default function Home() {
   const [language, setLanguage] = useState<Language>("es");
@@ -338,7 +344,7 @@ function StelisSidebar({ language }: { language: Language }) {
                 className={
                   item.active
                     ? "h-[9px] w-[9px] rounded-full bg-[#18B7FF]"
-                    : "h-[9px] w-[9px] rounded-full bg-white/22"
+                    : "h-[9px] w-[9px] rounded-full bg-white/20"
                 }
               />
 

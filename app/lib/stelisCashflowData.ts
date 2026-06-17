@@ -49,9 +49,39 @@ export const stelisInitialAccounts: StelisAccount[] = [
   },
   {
     id: "occidente",
-    name: "Occidente",
+    name: "Banco Occidente",
     type: "bank",
     balance: 40281.39,
+  },
+  {
+    id: "atlantida",
+    name: "Banco Atlántida",
+    type: "bank",
+    balance: 0,
+  },
+  {
+    id: "ficohsa",
+    name: "Banco Ficohsa",
+    type: "bank",
+    balance: 0,
+  },
+  {
+    id: "banpais",
+    name: "Banpaís",
+    type: "bank",
+    balance: 0,
+  },
+  {
+    id: "banrural",
+    name: "Banrural",
+    type: "bank",
+    balance: 0,
+  },
+  {
+    id: "cuscatlan",
+    name: "Banco Cuscatlán",
+    type: "bank",
+    balance: 0,
   },
   {
     id: "cash-box",

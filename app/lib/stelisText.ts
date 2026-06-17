@@ -88,6 +88,25 @@ export const stelisText = {
       },
     },
 
+    accountCreation: {
+      title: "Add Account",
+      accountName: "Account Name",
+      accountNamePlaceholder: "Example: BAC Checking",
+      accountType: "Account Type",
+      openingBalance: "Opening Balance",
+      openingBalancePlaceholder: "Example: 10000.00",
+      bankName: "Bank Name",
+      bankNamePlaceholder: "Example: BAC",
+      notes: "Notes",
+      notesPlaceholder: "Optional notes about this account",
+      addAccount: "Add Account",
+      accountTypes: {
+        bank: "Bank Account",
+        cash: "Cash Register",
+        settlement: "Pending Settlement",
+      },
+    },
+
     healthIndex: {
       title: "STELIS Health Index™",
       trend: "Trend",
@@ -211,6 +230,25 @@ export const stelisText = {
         taxes: "Impuestos",
         brand_usage: "Uso de Marca",
         emergency_purchase: "Compra de Emergencia",
+      },
+    },
+
+    accountCreation: {
+      title: "Agregar Cuenta",
+      accountName: "Nombre de Cuenta",
+      accountNamePlaceholder: "Ejemplo: BAC Corriente",
+      accountType: "Tipo de Cuenta",
+      openingBalance: "Saldo Inicial",
+      openingBalancePlaceholder: "Ejemplo: 10000.00",
+      bankName: "Nombre del Banco",
+      bankNamePlaceholder: "Ejemplo: BAC",
+      notes: "Notas",
+      notesPlaceholder: "Notas opcionales sobre esta cuenta",
+      addAccount: "Agregar Cuenta",
+      accountTypes: {
+        bank: "Cuenta Bancaria",
+        cash: "Caja de Efectivo",
+        settlement: "Liquidación Pendiente",
       },
     },
 

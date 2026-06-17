@@ -12,6 +12,7 @@ import {
   stelisNormalizeAmount,
   stelisTodayDate,
   type StelisAccount,
+  type StelisAccountType,
   type StelisCashMovement,
   type StelisMovementType,
   type StelisObligation,
@@ -19,6 +20,7 @@ import {
 import {
   stelisLoadAccounts,
   stelisLoadMovements,
+  stelisResetCashflowStorage,
   stelisSaveAccounts,
   stelisSaveMovements,
 } from "../lib/stelisCashflowStorage";
@@ -26,6 +28,21 @@ import StelisCard from "./StelisCard";
 
 export type StelisCashflowControlProps = {
   language: StelisLanguage;
+};
+
+type StelisFormErrors = {
+  movementType?: string;
+  accountId?: string;
+  amount?: string;
+  description?: string;
+  date?: string;
+};
+
+type StelisAccountErrors = {
+  name?: string;
+  type?: string;
+  openingBalance?: string;
+  bankName?: string;
 };
 
 function getPriorityStyle(priority: StelisObligation["priority"]) {
@@ -64,10 +81,19 @@ function getMovementDescription(
   return language === "es" ? movement.descriptionEs : movement.descriptionEn;
 }
 
+function getRequiredMessage(language: StelisLanguage) {
+  return language === "es" ? "Campo requerido" : "Required";
+}
+
+function getResetLabel(language: StelisLanguage) {
+  return language === "es" ? "Reiniciar Datos Demo" : "Reset Demo Data";
+}
+
 export function StelisCashflowControl({
   language,
 }: StelisCashflowControlProps) {
   const text = stelisText[language].cashflow;
+  const accountText = stelisText[language].accountCreation;
 
   const [storageReady, setStorageReady] = useState(false);
   const [accounts, setAccounts] =
@@ -83,6 +109,18 @@ export function StelisCashflowControl({
   const [description, setDescription] = useState("");
   const [date, setDate] = useState(stelisTodayDate());
 
+  const [errors, setErrors] = useState<StelisFormErrors>({});
+
+  // Account creation form state
+  const [showAccountForm, setShowAccountForm] = useState(false);
+  const [newAccountName, setNewAccountName] = useState("");
+  const [newAccountType, setNewAccountType] =
+    useState<StelisAccountType>("bank");
+  const [newOpeningBalance, setNewOpeningBalance] = useState("");
+  const [newBankName, setNewBankName] = useState("");
+  const [newNotes, setNewNotes] = useState("");
+  const [accountErrors, setAccountErrors] = useState<StelisAccountErrors>({});
+
   useEffect(() => {
     setAccounts(stelisLoadAccounts());
     setMovements(stelisLoadMovements());
@@ -91,13 +129,11 @@ export function StelisCashflowControl({
 
   useEffect(() => {
     if (!storageReady) return;
-
     stelisSaveAccounts(accounts);
   }, [accounts, storageReady]);
 
   useEffect(() => {
     if (!storageReady) return;
-
     stelisSaveMovements(movements);
   }, [movements, storageReady]);
 
@@ -128,13 +164,35 @@ export function StelisCashflowControl({
         ? text.recommendations.tight
         : text.recommendations.healthy;
 
-  function handleAddMovement() {
-    const parsedAmount = Number(amount);
+  function validateForm(): StelisFormErrors {
+    const newErrors: StelisFormErrors = {};
+    const required = getRequiredMessage(language);
 
-    if (!description.trim() || Number.isNaN(parsedAmount) || parsedAmount <= 0) {
+    if (!movementType) newErrors.movementType = required;
+    if (!accountId) newErrors.accountId = required;
+
+    const parsedAmount = Number(amount);
+    if (!amount || Number.isNaN(parsedAmount) || parsedAmount <= 0) {
+      newErrors.amount = required;
+    }
+
+    if (!description.trim()) newErrors.description = required;
+    if (!date) newErrors.date = required;
+
+    return newErrors;
+  }
+
+  function handleAddMovement() {
+    const newErrors = validateForm();
+
+    if (Object.keys(newErrors).length > 0) {
+      setErrors(newErrors);
       return;
     }
 
+    setErrors({});
+
+    const parsedAmount = Number(amount);
     const normalizedAmount = stelisNormalizeAmount(movementType, parsedAmount);
 
     const newMovement: StelisCashMovement = {
@@ -152,10 +210,7 @@ export function StelisCashflowControl({
     setAccounts((current) =>
       current.map((account) =>
         account.id === accountId
-          ? {
-              ...account,
-              balance: account.balance + normalizedAmount,
-            }
+          ? { ...account, balance: account.balance + normalizedAmount }
           : account,
       ),
     );
@@ -165,6 +220,75 @@ export function StelisCashflowControl({
     setMovementType("cash_received");
     setAccountId(stelisInitialAccounts[0].id);
     setDate(stelisTodayDate());
+  }
+
+  function handleResetDemo() {
+    stelisResetCashflowStorage();
+    setAccounts(stelisInitialAccounts);
+    setMovements(stelisInitialMovements);
+    setErrors({});
+    setAmount("");
+    setDescription("");
+    setMovementType("cash_received");
+    setAccountId(stelisInitialAccounts[0].id);
+    setDate(stelisTodayDate());
+  }
+
+  function validateAccountForm(): StelisAccountErrors {
+    const newErrors: StelisAccountErrors = {};
+    const required = getRequiredMessage(language);
+
+    if (!newAccountName.trim()) newErrors.name = required;
+    if (!newAccountType) newErrors.type = required;
+
+    const parsedBalance = Number(newOpeningBalance);
+    if (
+      newOpeningBalance === "" ||
+      Number.isNaN(parsedBalance) ||
+      parsedBalance < 0
+    ) {
+      newErrors.openingBalance = required;
+    }
+
+    // Bank name only required when the account type is a bank account
+    if (newAccountType === "bank" && !newBankName.trim()) {
+      newErrors.bankName = required;
+    }
+
+    return newErrors;
+  }
+
+  function handleAddAccount() {
+    const newErrors = validateAccountForm();
+
+    if (Object.keys(newErrors).length > 0) {
+      setAccountErrors(newErrors);
+      return;
+    }
+
+    setAccountErrors({});
+
+    const parsedBalance = Number(newOpeningBalance);
+
+    const newAccount: StelisAccount = {
+      id: `acct-${Date.now()}`,
+      name: newAccountName.trim(),
+      type: newAccountType,
+      balance: parsedBalance,
+    };
+
+    setAccounts((current) => [...current, newAccount]);
+
+    // Select the newly created account in the movement form
+    setAccountId(newAccount.id);
+
+    // Clear the account form
+    setNewAccountName("");
+    setNewAccountType("bank");
+    setNewOpeningBalance("");
+    setNewBankName("");
+    setNewNotes("");
+    setShowAccountForm(false);
   }
 
   return (
@@ -185,16 +309,26 @@ export function StelisCashflowControl({
             </p>
           </div>
 
-          <div
-            className={`rounded-full px-[16px] py-[9px] text-[13px] font-semibold ring-1 ${
-              cashRisk === "critical"
-                ? "bg-[#D62828]/10 text-[#D62828] ring-[#D62828]/20"
-                : cashRisk === "tight"
-                  ? "bg-[#07111F]/5 text-[#07111F] ring-[#07111F]/10"
-                  : "bg-[#34C759]/10 text-[#1E9E45] ring-[#34C759]/25"
-            }`}
-          >
-            {cashRiskBadge}
+          <div className="flex items-center gap-[13px]">
+            <button
+              type="button"
+              onClick={handleResetDemo}
+              className="rounded-full border border-[#07111F]/15 px-[16px] py-[9px] text-[13px] font-semibold text-[#07111F]/55 transition duration-150 hover:border-[#D62828]/30 hover:text-[#D62828]"
+            >
+              {getResetLabel(language)}
+            </button>
+
+            <div
+              className={`rounded-full px-[16px] py-[9px] text-[13px] font-semibold ring-1 ${
+                cashRisk === "critical"
+                  ? "bg-[#D62828]/10 text-[#D62828] ring-[#D62828]/20"
+                  : cashRisk === "tight"
+                    ? "bg-[#07111F]/5 text-[#07111F] ring-[#07111F]/10"
+                    : "bg-[#34C759]/10 text-[#1E9E45] ring-[#34C759]/25"
+              }`}
+            >
+              {cashRiskBadge}
+            </div>
           </div>
         </div>
 
@@ -242,6 +376,8 @@ export function StelisCashflowControl({
             </p>
 
             <div className="mt-[21px] grid gap-[16px]">
+
+              {/* Movement Type */}
               <label className="grid gap-[8px]">
                 <span className="text-[13px] font-semibold text-[#07111F]">
                   {text.movementType}
@@ -249,10 +385,15 @@ export function StelisCashflowControl({
 
                 <select
                   value={movementType}
-                  onChange={(event) =>
-                    setMovementType(event.target.value as StelisMovementType)
-                  }
-                  className="rounded-[13px] border border-[#07111F]/10 bg-white px-[14px] py-[12px] text-[14px] font-medium outline-none"
+                  onChange={(event) => {
+                    setMovementType(event.target.value as StelisMovementType);
+                    setErrors((prev) => ({ ...prev, movementType: undefined }));
+                  }}
+                  className={`rounded-[13px] border bg-white px-[14px] py-[12px] text-[14px] font-medium outline-none ${
+                    errors.movementType
+                      ? "border-[#D62828]"
+                      : "border-[#07111F]/10"
+                  }`}
                 >
                   {Object.entries(text.movementTypes).map(([value, label]) => (
                     <option key={value} value={value}>
@@ -260,8 +401,15 @@ export function StelisCashflowControl({
                     </option>
                   ))}
                 </select>
+
+                {errors.movementType && (
+                  <span className="text-[12px] font-semibold text-[#D62828]">
+                    {errors.movementType}
+                  </span>
+                )}
               </label>
 
+              {/* Account */}
               <label className="grid gap-[8px]">
                 <span className="text-[13px] font-semibold text-[#07111F]">
                   {text.account}
@@ -269,8 +417,15 @@ export function StelisCashflowControl({
 
                 <select
                   value={accountId}
-                  onChange={(event) => setAccountId(event.target.value)}
-                  className="rounded-[13px] border border-[#07111F]/10 bg-white px-[14px] py-[12px] text-[14px] font-medium outline-none"
+                  onChange={(event) => {
+                    setAccountId(event.target.value);
+                    setErrors((prev) => ({ ...prev, accountId: undefined }));
+                  }}
+                  className={`rounded-[13px] border bg-white px-[14px] py-[12px] text-[14px] font-medium outline-none ${
+                    errors.accountId
+                      ? "border-[#D62828]"
+                      : "border-[#07111F]/10"
+                  }`}
                 >
                   {accounts.map((account) => (
                     <option key={account.id} value={account.id}>
@@ -278,8 +433,15 @@ export function StelisCashflowControl({
                     </option>
                   ))}
                 </select>
+
+                {errors.accountId && (
+                  <span className="text-[12px] font-semibold text-[#D62828]">
+                    {errors.accountId}
+                  </span>
+                )}
               </label>
 
+              {/* Amount */}
               <label className="grid gap-[8px]">
                 <span className="text-[13px] font-semibold text-[#07111F]">
                   {text.amount}
@@ -287,15 +449,27 @@ export function StelisCashflowControl({
 
                 <input
                   value={amount}
-                  onChange={(event) => setAmount(event.target.value)}
+                  onChange={(event) => {
+                    setAmount(event.target.value);
+                    setErrors((prev) => ({ ...prev, amount: undefined }));
+                  }}
                   type="number"
                   min="0"
                   step="0.01"
                   placeholder={text.amountPlaceholder}
-                  className="rounded-[13px] border border-[#07111F]/10 bg-white px-[14px] py-[12px] text-[14px] font-medium outline-none"
+                  className={`rounded-[13px] border bg-white px-[14px] py-[12px] text-[14px] font-medium outline-none ${
+                    errors.amount ? "border-[#D62828]" : "border-[#07111F]/10"
+                  }`}
                 />
+
+                {errors.amount && (
+                  <span className="text-[12px] font-semibold text-[#D62828]">
+                    {errors.amount}
+                  </span>
+                )}
               </label>
 
+              {/* Description */}
               <label className="grid gap-[8px]">
                 <span className="text-[13px] font-semibold text-[#07111F]">
                   {text.descriptionLabel}
@@ -303,12 +477,26 @@ export function StelisCashflowControl({
 
                 <input
                   value={description}
-                  onChange={(event) => setDescription(event.target.value)}
+                  onChange={(event) => {
+                    setDescription(event.target.value);
+                    setErrors((prev) => ({ ...prev, description: undefined }));
+                  }}
                   placeholder={text.descriptionPlaceholder}
-                  className="rounded-[13px] border border-[#07111F]/10 bg-white px-[14px] py-[12px] text-[14px] font-medium outline-none"
+                  className={`rounded-[13px] border bg-white px-[14px] py-[12px] text-[14px] font-medium outline-none ${
+                    errors.description
+                      ? "border-[#D62828]"
+                      : "border-[#07111F]/10"
+                  }`}
                 />
+
+                {errors.description && (
+                  <span className="text-[12px] font-semibold text-[#D62828]">
+                    {errors.description}
+                  </span>
+                )}
               </label>
 
+              {/* Date */}
               <label className="grid gap-[8px]">
                 <span className="text-[13px] font-semibold text-[#07111F]">
                   {text.date}
@@ -316,10 +504,21 @@ export function StelisCashflowControl({
 
                 <input
                   value={date}
-                  onChange={(event) => setDate(event.target.value)}
+                  onChange={(event) => {
+                    setDate(event.target.value);
+                    setErrors((prev) => ({ ...prev, date: undefined }));
+                  }}
                   type="date"
-                  className="rounded-[13px] border border-[#07111F]/10 bg-white px-[14px] py-[12px] text-[14px] font-medium outline-none"
+                  className={`rounded-[13px] border bg-white px-[14px] py-[12px] text-[14px] font-medium outline-none ${
+                    errors.date ? "border-[#D62828]" : "border-[#07111F]/10"
+                  }`}
                 />
+
+                {errors.date && (
+                  <span className="text-[12px] font-semibold text-[#D62828]">
+                    {errors.date}
+                  </span>
+                )}
               </label>
 
               <button
@@ -329,6 +528,201 @@ export function StelisCashflowControl({
               >
                 {text.registerMovement}
               </button>
+            </div>
+
+            {/* Account Creation Section */}
+            <div className="mt-[21px] border-t border-[#07111F]/10 pt-[21px]">
+              {!showAccountForm ? (
+                <button
+                  type="button"
+                  onClick={() => setShowAccountForm(true)}
+                  className="w-full rounded-full border border-dashed border-[#07111F]/25 px-[21px] py-[12px] text-[13px] font-semibold text-[#07111F]/65 transition duration-150 hover:border-[#07111F]/50 hover:text-[#07111F]"
+                >
+                  + {accountText.addAccount}
+                </button>
+              ) : (
+                <div className="rounded-[16px] border border-[#07111F]/10 bg-white p-[18px]">
+                  <p className="text-[12px] font-bold uppercase tracking-[0.24em] text-[#07111F]/65">
+                    {accountText.title}
+                  </p>
+
+                  <div className="mt-[16px] grid gap-[16px]">
+
+                    {/* Account Name */}
+                    <label className="grid gap-[8px]">
+                      <span className="text-[13px] font-semibold text-[#07111F]">
+                        {accountText.accountName}
+                      </span>
+
+                      <input
+                        value={newAccountName}
+                        onChange={(event) => {
+                          setNewAccountName(event.target.value);
+                          setAccountErrors((prev) => ({
+                            ...prev,
+                            name: undefined,
+                          }));
+                        }}
+                        placeholder={accountText.accountNamePlaceholder}
+                        className={`rounded-[13px] border bg-white px-[14px] py-[12px] text-[14px] font-medium outline-none ${
+                          accountErrors.name
+                            ? "border-[#D62828]"
+                            : "border-[#07111F]/10"
+                        }`}
+                      />
+
+                      {accountErrors.name && (
+                        <span className="text-[12px] font-semibold text-[#D62828]">
+                          {accountErrors.name}
+                        </span>
+                      )}
+                    </label>
+
+                    {/* Account Type */}
+                    <label className="grid gap-[8px]">
+                      <span className="text-[13px] font-semibold text-[#07111F]">
+                        {accountText.accountType}
+                      </span>
+
+                      <select
+                        value={newAccountType}
+                        onChange={(event) => {
+                          setNewAccountType(
+                            event.target.value as StelisAccountType,
+                          );
+                          setAccountErrors((prev) => ({
+                            ...prev,
+                            type: undefined,
+                            bankName: undefined,
+                          }));
+                        }}
+                        className={`rounded-[13px] border bg-white px-[14px] py-[12px] text-[14px] font-medium outline-none ${
+                          accountErrors.type
+                            ? "border-[#D62828]"
+                            : "border-[#07111F]/10"
+                        }`}
+                      >
+                        {Object.entries(accountText.accountTypes).map(
+                          ([value, label]) => (
+                            <option key={value} value={value}>
+                              {label}
+                            </option>
+                          ),
+                        )}
+                      </select>
+
+                      {accountErrors.type && (
+                        <span className="text-[12px] font-semibold text-[#D62828]">
+                          {accountErrors.type}
+                        </span>
+                      )}
+                    </label>
+
+                    {/* Opening Balance */}
+                    <label className="grid gap-[8px]">
+                      <span className="text-[13px] font-semibold text-[#07111F]">
+                        {accountText.openingBalance}
+                      </span>
+
+                      <input
+                        value={newOpeningBalance}
+                        onChange={(event) => {
+                          setNewOpeningBalance(event.target.value);
+                          setAccountErrors((prev) => ({
+                            ...prev,
+                            openingBalance: undefined,
+                          }));
+                        }}
+                        type="number"
+                        min="0"
+                        step="0.01"
+                        placeholder={accountText.openingBalancePlaceholder}
+                        className={`rounded-[13px] border bg-white px-[14px] py-[12px] text-[14px] font-medium outline-none ${
+                          accountErrors.openingBalance
+                            ? "border-[#D62828]"
+                            : "border-[#07111F]/10"
+                        }`}
+                      />
+
+                      {accountErrors.openingBalance && (
+                        <span className="text-[12px] font-semibold text-[#D62828]">
+                          {accountErrors.openingBalance}
+                        </span>
+                      )}
+                    </label>
+
+                    {/* Bank Name */}
+                    <label className="grid gap-[8px]">
+                      <span className="text-[13px] font-semibold text-[#07111F]">
+                        {accountText.bankName}
+                      </span>
+
+                      <input
+                        value={newBankName}
+                        onChange={(event) => {
+                          setNewBankName(event.target.value);
+                          setAccountErrors((prev) => ({
+                            ...prev,
+                            bankName: undefined,
+                          }));
+                        }}
+                        placeholder={accountText.bankNamePlaceholder}
+                        className={`rounded-[13px] border bg-white px-[14px] py-[12px] text-[14px] font-medium outline-none ${
+                          accountErrors.bankName
+                            ? "border-[#D62828]"
+                            : "border-[#07111F]/10"
+                        }`}
+                      />
+
+                      {accountErrors.bankName && (
+                        <span className="text-[12px] font-semibold text-[#D62828]">
+                          {accountErrors.bankName}
+                        </span>
+                      )}
+                    </label>
+
+                    {/* Notes (optional) */}
+                    <label className="grid gap-[8px]">
+                      <span className="text-[13px] font-semibold text-[#07111F]">
+                        {accountText.notes}
+                      </span>
+
+                      <input
+                        value={newNotes}
+                        onChange={(event) => setNewNotes(event.target.value)}
+                        placeholder={accountText.notesPlaceholder}
+                        className="rounded-[13px] border border-[#07111F]/10 bg-white px-[14px] py-[12px] text-[14px] font-medium outline-none"
+                      />
+                    </label>
+
+                    <div className="mt-[5px] flex items-center gap-[10px]">
+                      <button
+                        type="button"
+                        onClick={handleAddAccount}
+                        className="flex-1 rounded-full bg-[#07111F] px-[21px] py-[13px] text-[14px] font-semibold text-white transition duration-150 hover:bg-[#0B1F3A]"
+                      >
+                        {accountText.addAccount}
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setShowAccountForm(false);
+                          setAccountErrors({});
+                          setNewAccountName("");
+                          setNewAccountType("bank");
+                          setNewOpeningBalance("");
+                          setNewBankName("");
+                          setNewNotes("");
+                        }}
+                        className="rounded-full border border-[#07111F]/15 px-[18px] py-[13px] text-[14px] font-semibold text-[#07111F]/55 transition duration-150 hover:text-[#07111F]"
+                      >
+                        {language === "es" ? "Cancelar" : "Cancel"}
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              )}
             </div>
           </div>
 
